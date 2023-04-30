@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
@@ -18,6 +19,7 @@ import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
             UsbSerialDriver driver = availableDrivers.get(0);
 //            manager.requestPermission(device, mPermissionIntent);
             PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
-            manager.requestPermission(driver.getDevice(),usbPermissionIntent );
+            manager.requestPermission(driver.getDevice(), usbPermissionIntent);
             UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
             if (connection == null) {
 //                PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
@@ -76,8 +78,8 @@ public class MainActivity extends AppCompatActivity {
 
 
     public void calibrate(View view) {
-        EditText textOn=findViewById(R.id.editNumberON);
-        EditText textOff=findViewById(R.id.editNumberOff);
+        EditText textOn = findViewById(R.id.editNumberON);
+        EditText textOff = findViewById(R.id.editNumberOff);
 
         // Find all available drivers from attached devices.
         UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
@@ -90,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
         UsbSerialDriver driver = availableDrivers.get(0);
 //            manager.requestPermission(device, mPermissionIntent);
         PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
-        manager.requestPermission(driver.getDevice(),usbPermissionIntent );
+        manager.requestPermission(driver.getDevice(), usbPermissionIntent);
         UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
         if (connection == null) {
 //                PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
@@ -126,7 +128,53 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
 
+    public void readFromSerial(View view) {
 
+        UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
+        if (availableDrivers.isEmpty()) {
+            return;
+        }
+
+        // Open a connection to the first available driver.
+        UsbSerialDriver driver = availableDrivers.get(0);
+//            manager.requestPermission(device, mPermissionIntent);
+        PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
+        manager.requestPermission(driver.getDevice(), usbPermissionIntent);
+        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
+        if (connection == null) {
+//                PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(BuildConfig.APPLICATION_ID + ".GRANT_USB"), 0);
+//                manager.requestPermission(driver.getDevice(),usbPermissionIntent );
+            return;
+        }
+
+        UsbSerialPort port = driver.getPorts().get(0); // Most devices have just one port (port 0)
+        try {
+            port.open(connection);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            byte[] buffer = new byte[25];
+            port.read(buffer, 1000);
+            String string = new String(buffer, StandardCharsets.UTF_8);
+            TextView textVIew = findViewById(R.id.mensajeTextView);
+            textVIew.setText(string);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        try {
+            port.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
